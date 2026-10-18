@@ -1,0 +1,7 @@
+[project]
+name = "youtubemetadata"
+version = "0.1.0"
+description = "include proper song metadata in youtube music"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = []

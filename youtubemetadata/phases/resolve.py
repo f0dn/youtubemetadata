@@ -1,5 +1,8 @@
 """Phase 1 — resolve a playlist into album-backed song metadata."""
 
+import json
+import re
+
 from youtubemetadata.models import (
     Album,
     AlbumRef,
@@ -7,8 +10,18 @@ from youtubemetadata.models import (
     Track,
     TrackEntry,
 )
+from youtubemetadata.paths import MANIFEST
 from youtubemetadata.services import YouTubeMusicService, is_music_video
 from youtubemetadata.utils import extract_playlist_id
+
+
+def _normalize_title(title: str | None) -> str:
+    """Normalize a title for fuzzy album-track matching (lowercase, alphanumeric only,
+    ignoring parentheticals like "(Deluxe Version)")."""
+    if not title:
+        return ""
+    stripped = re.sub(r"\([^)]*\)", "", title)
+    return re.sub(r"[^a-z0-9]+", "", stripped.lower())
 
 
 def phase_resolve(
@@ -63,16 +76,20 @@ def phase_resolve(
         track = album_tracks.get(vid) or t
 
         audio_vid = vid
-        is_music = False
+        is_music = is_music_video(track)
         music_video_of = None
         src = track
 
-        if is_music_video(track):
+        if is_music:
+            # music videos (e.g. MUSIC_VIDEO_TYPE_OMV) are not audio tracks — swap for the
+            # actual audio track (MUSIC_VIDEO_TYPE_ATV) via the watch page related list
+            print(
+                f"  [{idx}/{len(tracks)}] ♪ music video → audio track  {vid}  {t.title}"
+            )
             related = svc.get_music_video_audio(vid)
             if related is not None and related.videoId:
                 src = related
                 audio_vid = related.videoId
-                is_music = True
                 music_video_of = vid
                 print(
                     f"  [{idx}/{len(tracks)}] ♪ music video → audio track  {vid}  {t.title}  →  {audio_vid}"
@@ -93,6 +110,10 @@ def phase_resolve(
         track_tot = None
         track_no = None
         aid = track_albums.get(audio_vid) or track_albums.get(vid or "")
+        if not aid and isinstance(t.album, AlbumRef):
+            # playlist tracks reference their album via an AlbumRef even when the videoId
+            # is not part of the fetched album track list (e.g. album-version swaps)
+            aid = t.album.id
         album = albums.get(aid) if aid else None
         if album is not None:
             album_nm = album.title or album_nm
@@ -107,6 +128,17 @@ def phase_resolve(
                 if at.trackNumber is not None:
                     track_no = at.trackNumber + 1
                     break
+            if track_no is None and src.title:
+                # fall back to matching the album track by normalized title when the
+                # videoId is not part of the album track list
+                target = _normalize_title(src.title)
+                for at in album.tracks:
+                    if (
+                        at.trackNumber is not None
+                        and _normalize_title(at.title) == target
+                    ):
+                        track_no = at.trackNumber + 1
+                        break
 
         entries.append(
             TrackEntry(
@@ -132,11 +164,12 @@ def phase_resolve(
         )
 
         # cache the full song metadata (credits / player details) for the audio track we keep
-        sid = src.creditsBrowseId or t.creditsBrowseId or audio_vid
-        try:
-            svc.get_song(sid)
-        except Exception as e:
-            print(f"  [{idx}/{len(tracks)}] ✗ song {audio_vid}  {e}")
+        sid = src.creditsBrowseId or t.creditsBrowseId or audio_vid or ""
+        if sid:
+            try:
+                svc.get_song(sid)
+            except Exception as e:
+                print(f"  [{idx}/{len(tracks)}] ✗ song {audio_vid}  {e}")
 
     resolution = PlaylistResolution(
         playlistId=pid,
@@ -144,6 +177,10 @@ def phase_resolve(
         totalTracks=len(tracks),
         uniqueAlbums=len(album_ids),
         tracks=entries,
+    )
+
+    MANIFEST.write_text(
+        json.dumps(resolution.model_dump(mode="json"), indent=2, ensure_ascii=False)
     )
 
     # quick summary
@@ -162,5 +199,7 @@ def phase_resolve(
         print(
             f"  ♪  {music_vids} track(s) were music videos — swapped for audio tracks"
         )
+
+    print(f"\nManifest saved → {MANIFEST}")
 
     return resolution

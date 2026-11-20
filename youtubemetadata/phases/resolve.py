@@ -7,6 +7,7 @@ from youtubemetadata.models import (
     Album,
     AlbumRef,
     PlaylistResolution,
+    SongCredits,
     Track,
     TrackEntry,
 )
@@ -69,6 +70,16 @@ def phase_resolve(
                 album_tracks[at.videoId] = at
                 track_albums[at.videoId] = aid
 
+    # ytmusicapi returns 1-based track numbers for most albums, but a few (e.g. Elephunk)
+    # are 0-based — remember the base per album so we can normalize to 1-based
+    album_zero_based: set[str] = set()
+    for aid, album in sorted(albums.items()):
+        if album is None:
+            continue
+        numbers = [at.trackNumber for at in album.tracks if at.trackNumber is not None]
+        if numbers and min(numbers) == 0:
+            album_zero_based.add(aid)
+
     entries: list[TrackEntry] = []
 
     for idx, t in enumerate(tracks, 1):
@@ -86,7 +97,9 @@ def phase_resolve(
             print(
                 f"  [{idx}/{len(tracks)}] ♪ music video → audio track  {vid}  {t.title}"
             )
-            related = svc.get_music_video_audio(vid)
+            related = svc.get_music_video_audio(
+                vid, t.title, t.artists[0].name if t.artists else None
+            )
             if related is not None and related.videoId:
                 src = related
                 audio_vid = related.videoId
@@ -117,16 +130,17 @@ def phase_resolve(
         album = albums.get(aid) if aid else None
         if album is not None:
             album_nm = album.title or album_nm
-            album_art = ", ".join(a.name or "" for a in album.artists if a.name) or None
+            album_art = [a.name for a in album.artists if a.name] or [artist]
             year = album.year
             track_tot = album.trackCount
             # the audio track (ATV) may not be an album track itself, so fall back to the
             # music video (OMV) track for the shared metadata (e.g. track number)
+            track_base = 1 if aid in album_zero_based else 0
             for at in album.tracks:
                 if at.videoId not in (audio_vid, vid):
                     continue
                 if at.trackNumber is not None:
-                    track_no = at.trackNumber + 1
+                    track_no = at.trackNumber + track_base
                     break
             if track_no is None and src.title:
                 # fall back to matching the album track by normalized title when the
@@ -137,8 +151,26 @@ def phase_resolve(
                         at.trackNumber is not None
                         and _normalize_title(at.title) == target
                     ):
-                        track_no = at.trackNumber + 1
+                        track_no = at.trackNumber + track_base
                         break
+
+        # cache the full song metadata (credits / player details) for the audio track we keep
+        sid = src.creditsBrowseId or t.creditsBrowseId or audio_vid or ""
+        song_credits = None
+        if sid:
+            try:
+                song_credits = svc.get_song(sid)
+            except Exception as e:
+                print(f"  [{idx}/{len(tracks)}] ✗ song {audio_vid}  {e}")
+
+        # a track can list a single artist while the song credits list several
+        # (e.g. "Empire State of Mind" — Jay-Z + Alicia Keys); prefer the credits then
+        if len(artist_names) <= 1 and isinstance(song_credits, SongCredits):
+            performed = song_credits.performed_by
+            credit_names = [n for n in (performed.data if performed else []) if n]
+            if len(credit_names) > len(artist_names):
+                artist_names = credit_names
+                artist = artist_names[0]
 
         entries.append(
             TrackEntry(
@@ -148,7 +180,7 @@ def phase_resolve(
                 artist=artist,
                 artists=artist_names,
                 album=album_nm or "Unknown",
-                albumArtist=album_art or artist,
+                albumArtist=list(album_art) if album_art else [artist],
                 trackNumber=track_no,
                 trackTotal=track_tot,
                 year=year,
@@ -162,14 +194,6 @@ def phase_resolve(
                 creditsBrowseId=src.creditsBrowseId or t.creditsBrowseId,
             )
         )
-
-        # cache the full song metadata (credits / player details) for the audio track we keep
-        sid = src.creditsBrowseId or t.creditsBrowseId or audio_vid or ""
-        if sid:
-            try:
-                svc.get_song(sid)
-            except Exception as e:
-                print(f"  [{idx}/{len(tracks)}] ✗ song {audio_vid}  {e}")
 
     resolution = PlaylistResolution(
         playlistId=pid,

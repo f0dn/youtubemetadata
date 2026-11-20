@@ -1,5 +1,6 @@
 """YouTube Music service: typed access to ytmusicapi with caching of raw metadata."""
 
+import re
 import time
 
 from ytmusicapi import YTMusic
@@ -18,6 +19,13 @@ AUDIO_VIDEO_TYPES = frozenset(
 )
 
 SPEED = 0.5  # seconds between API calls (be nice to YouTube)
+
+
+def _normalize(s: str | None) -> str:
+    """Lowercase + strip non-alphanumerics for fuzzy music video / audio track matching."""
+    if not s:
+        return ""
+    return re.sub(r"[^a-z0-9]+", "", s.lower())
 
 
 def is_music_video(track: Track) -> bool:
@@ -87,7 +95,9 @@ class YouTubeMusicService:
 
     # ─── music videos → audio tracks ─────────────────────────────────
 
-    def get_music_video_audio(self, video_id: str) -> Track | None:
+    def get_music_video_audio(
+        self, video_id: str, omv_title: str | None = None, omv_artist: str | None = None
+    ) -> Track | None:
         """Music videos (``MUSIC_VIDEO_TYPE_OMV``) are videos, not audio tracks.
         Whenever we hit one, follow the watch page's related tracks to find the
         actual audio track (``MUSIC_VIDEO_TYPE_ATV``) that belongs to the same song."""
@@ -118,14 +128,55 @@ class YouTubeMusicService:
 
         collect(sections)
 
-        audio_track = next(
-            (c for c in candidates if c.videoType == MUSIC_VIDEO_TYPE_ATV), None
-        )
-        chosen = audio_track or (candidates[0] if candidates else None)
+        pool = candidates
+        if omv_artist:
+            # the related list may contain the whole album catalog (and covers); prefer
+            # candidates that are actually by the same artist as the music video
+            artist_key = _normalize(omv_artist)
+            same_artist = [
+                c
+                for c in candidates
+                if _normalize(c.artists[0].name if c.artists else None) == artist_key
+            ]
+            if same_artist:
+                pool = same_artist
+
+        chosen = None
+        if omv_title:
+            # within the same-artist pool, prefer the candidate whose (normalized) title
+            # matches the music video's own title
+            target = _normalize(omv_title)
+            for c in pool:
+                if (
+                    c.videoType == MUSIC_VIDEO_TYPE_ATV
+                    and _normalize(c.title) == target
+                ):
+                    chosen = c
+                    break
+            if chosen is None:
+                # no ATV with a matching title — fall back to the official music video of
+                # the same song (e.g. the artist's own upload) and treat it as the audio
+                official = next(
+                    (
+                        c
+                        for c in pool
+                        if c.videoType == MUSIC_VIDEO_TYPE_OMV
+                        and _normalize(c.title) == target
+                    ),
+                    None,
+                )
+                if official is not None:
+                    chosen = official
         if chosen is None:
-            return None
-        if audio_track is None:
+            chosen = next(
+                (c for c in pool if c.videoType == MUSIC_VIDEO_TYPE_ATV), None
+            )
+        if chosen is None and pool:
             # related tracks are not always parsed with a video type; fall back to the
             # first related track and treat it as the audio track of the music video
+            chosen = pool[0]
+        if chosen is None:
+            return None
+        if chosen.videoType != MUSIC_VIDEO_TYPE_ATV:
             chosen = chosen.model_copy(update={"videoType": MUSIC_VIDEO_TYPE_ATV})
         return chosen

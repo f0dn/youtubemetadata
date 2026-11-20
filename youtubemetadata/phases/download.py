@@ -1,7 +1,6 @@
 """Phase 3 — download audio via yt-dlp for the resolved tracks."""
 
-import subprocess
-import sys
+import yt_dlp
 
 from youtubemetadata.models import PlaylistResolution
 from youtubemetadata.paths import RAW_DIR
@@ -38,32 +37,19 @@ def phase_download(resolution: PlaylistResolution) -> PlaylistResolution:
         track_dir.mkdir(parents=True, exist_ok=True)
         url = f"https://www.youtube.com/watch?v={vid}"
 
-        cmd = [
-            "yt-dlp",
-            "--no-playlist",
-            "-f",
-            "bestaudio[ext=m4a]/bestaudio",
-            "--merge-output-format",
-            "m4a",
-            "--write-info-json",
-            "--write-thumbnail",
-            "-o",
-            str(track_dir / "audio"),
-            url,
-        ]
+        ydl_opts = {
+            "format": "bestaudio[ext=m4a]/bestaudio",
+            "merge_output_format": "m4a",
+            "write_info_json": True,
+            "write_thumbnail": True,
+            "outtmpl": str(track_dir / "audio"),
+            "noplaylist": True,
+        }
         try:
-            r = subprocess.run(
-                cmd, check=False, capture_output=True, text=True, timeout=180
-            )
-            if r.returncode == 0:
-                print(f"  [{i}/{n}] ✓ {tr.title}")
-            else:
-                err = (r.stderr or r.stdout or "").strip().splitlines()
-                print(f"  [{i}/{n}] ✗ {tr.title}  {err[-1] if err else 'err'}")
-        except subprocess.TimeoutExpired:
-            print(f"  [{i}/{n}] ⏱  {tr.title}  (timeout)")
-        except FileNotFoundError:
-            print("ERROR: yt-dlp not found.  pip install yt-dlp")
-            sys.exit(1)
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+            print(f"  [{i}/{n}] ✓ {tr.title}")
+        except Exception as e:
+            print(f"  [{i}/{n}] ✗ {tr.title}  {e}")
 
     return resolution

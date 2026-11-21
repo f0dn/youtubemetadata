@@ -12,9 +12,7 @@ def test_parser_accepts_resolve_subcommand() -> None:
 
 def test_parser_accepts_full_subcommand() -> None:
     parser = build_parser()
-    args = parser.parse_args(
-        ["full", "https://music.youtube.com/playlist?list=PLGuOJ7hPNiJA"]
-    )
+    args = parser.parse_args(["full", "https://music.youtube.com/playlist?list=PLGuOJ7hPNiJA"])
     assert args.command == "full"
     assert args.playlist_url == "https://music.youtube.com/playlist?list=PLGuOJ7hPNiJA"
 

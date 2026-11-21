@@ -51,9 +51,7 @@ def phase_resolve(
             album = svc.get_album(aid)
             albums[aid] = album
             artists = ", ".join(a.name or "" for a in album.artists if a.name)
-            print(
-                f"  [{i}/{len(album_ids)}] ✓ {aid}  {album.title or 'Unknown'} — {artists}"
-            )
+            print(f"  [{i}/{len(album_ids)}] ✓ {aid}  {album.title or 'Unknown'} — {artists}")
         except Exception as e:
             albums[aid] = None
             print(f"  [{i}/{len(album_ids)}] ✗ {aid}  {e}")
@@ -94,9 +92,7 @@ def phase_resolve(
         if is_music:
             # music videos (e.g. MUSIC_VIDEO_TYPE_OMV) are not audio tracks — swap for the
             # actual audio track (MUSIC_VIDEO_TYPE_ATV) via the watch page related list
-            print(
-                f"  [{idx}/{len(tracks)}] ♪ music video → audio track  {vid}  {t.title}"
-            )
+            print(f"  [{idx}/{len(tracks)}] ♪ music video → audio track  {vid}  {t.title}")
             related = svc.get_music_video_audio(
                 vid, t.title, t.artists[0].name if t.artists else None
             )
@@ -147,10 +143,7 @@ def phase_resolve(
                 # videoId is not part of the album track list
                 target = _normalize_title(src.title)
                 for at in album.tracks:
-                    if (
-                        at.trackNumber is not None
-                        and _normalize_title(at.title) == target
-                    ):
+                    if at.trackNumber is not None and _normalize_title(at.title) == target:
                         track_no = at.trackNumber + track_base
                         break
 
@@ -220,9 +213,7 @@ def phase_resolve(
             f"(likely singles, uploads, or unavailable)"
         )
     if music_vids:
-        print(
-            f"  ♪  {music_vids} track(s) were music videos — swapped for audio tracks"
-        )
+        print(f"  ♪  {music_vids} track(s) were music videos — swapped for audio tracks")
 
     print(f"\nManifest saved → {MANIFEST}")
 

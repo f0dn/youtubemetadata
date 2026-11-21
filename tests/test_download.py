@@ -12,9 +12,7 @@ def _resolution() -> PlaylistResolution:
         playlistTitle="Test",
         totalTracks=1,
         uniqueAlbums=1,
-        tracks=[
-            TrackEntry(index=1, videoId="atv1", title="Song One", isAvailable=True)
-        ],
+        tracks=[TrackEntry(index=1, videoId="atv1", title="Song One", isAvailable=True)],
     )
 
 
@@ -35,6 +33,4 @@ def test_download_uses_yt_dlp_python_api() -> None:
         assert opts["write_thumbnail"] is True
         assert opts["noplaylist"] is True
         assert "atv1" in str(opts["outtmpl"])
-        instance.download.assert_called_once_with(
-            ["https://www.youtube.com/watch?v=atv1"]
-        )
+        instance.download.assert_called_once_with(["https://www.youtube.com/watch?v=atv1"])

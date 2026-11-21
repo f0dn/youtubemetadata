@@ -10,9 +10,7 @@ from youtubemetadata.models import (
 
 
 def test_track_album_accepts_string() -> None:
-    track = Track.model_validate(
-        {"videoId": "abc", "title": "Song", "album": "Album Title"}
-    )
+    track = Track.model_validate({"videoId": "abc", "title": "Song", "album": "Album Title"})
     assert track.album == "Album Title"
 
 

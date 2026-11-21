@@ -14,9 +14,7 @@ MUSIC_VIDEO_TYPE_UGC = VideoType.UGC.value
 MUSIC_VIDEO_TYPE_ATV = VideoType.ATV.value
 MUSIC_VIDEO_TYPE_OFFICIAL_SOURCE_MUSIC = VideoType.OFFICIAL_SOURCE_MUSIC.value
 
-AUDIO_VIDEO_TYPES = frozenset(
-    {MUSIC_VIDEO_TYPE_ATV, MUSIC_VIDEO_TYPE_OFFICIAL_SOURCE_MUSIC}
-)
+AUDIO_VIDEO_TYPES = frozenset({MUSIC_VIDEO_TYPE_ATV, MUSIC_VIDEO_TYPE_OFFICIAL_SOURCE_MUSIC})
 
 SPEED = 0.5  # seconds between API calls (be nice to YouTube)
 
@@ -147,10 +145,7 @@ class YouTubeMusicService:
             # matches the music video's own title
             target = _normalize(omv_title)
             for c in pool:
-                if (
-                    c.videoType == MUSIC_VIDEO_TYPE_ATV
-                    and _normalize(c.title) == target
-                ):
+                if c.videoType == MUSIC_VIDEO_TYPE_ATV and _normalize(c.title) == target:
                     chosen = c
                     break
             if chosen is None:
@@ -160,17 +155,14 @@ class YouTubeMusicService:
                     (
                         c
                         for c in pool
-                        if c.videoType == MUSIC_VIDEO_TYPE_OMV
-                        and _normalize(c.title) == target
+                        if c.videoType == MUSIC_VIDEO_TYPE_OMV and _normalize(c.title) == target
                     ),
                     None,
                 )
                 if official is not None:
                     chosen = official
         if chosen is None:
-            chosen = next(
-                (c for c in pool if c.videoType == MUSIC_VIDEO_TYPE_ATV), None
-            )
+            chosen = next((c for c in pool if c.videoType == MUSIC_VIDEO_TYPE_ATV), None)
         if chosen is None and pool:
             # related tracks are not always parsed with a video type; fall back to the
             # first related track and treat it as the audio track of the music video

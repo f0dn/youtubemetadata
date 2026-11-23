@@ -165,6 +165,16 @@ def phase_resolve(
                 artist_names = credit_names
                 artist = artist_names[0]
 
+        written_by: list[str] = []
+        produced_by: list[str] = []
+        if isinstance(song_credits, SongCredits):
+            written_by = [
+                n for n in (song_credits.written_by.data if song_credits.written_by else []) if n
+            ]
+            produced_by = [
+                n for n in (song_credits.produced_by.data if song_credits.produced_by else []) if n
+            ]
+
         entries.append(
             TrackEntry(
                 index=idx,
@@ -185,6 +195,8 @@ def phase_resolve(
                 isMusicVideo=is_music,
                 musicVideoOf=music_video_of,
                 creditsBrowseId=src.creditsBrowseId or t.creditsBrowseId,
+                writtenBy=written_by,
+                producedBy=produced_by,
             )
         )
 

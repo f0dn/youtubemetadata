@@ -107,6 +107,8 @@ class FakeService:
             performed_by=CreditSection(
                 localized_title="Performed by", data=["Jay-Z", "Alicia Keys"]
             ),
+            written_by=CreditSection(localized_title="Written by", data=["Jay-Z", "Alicia Keys"]),
+            produced_by=CreditSection(localized_title="Produced by", data=["Various"]),
         )
 
 
@@ -135,3 +137,5 @@ def test_resolve_uses_song_credits_for_multiple_artists() -> None:
     assert entry.albumArtist == ["Jay-Z"]
     assert entry.trackNumber == 1
     assert entry.trackTotal == 2
+    assert entry.writtenBy == ["Jay-Z", "Alicia Keys"]
+    assert entry.producedBy == ["Various"]

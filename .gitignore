@@ -12,7 +12,3 @@ wheels/
 # Test / tooling caches
 .pytest_cache/
 .ruff_cache/
-
-metadata
-manifest.json
-raw

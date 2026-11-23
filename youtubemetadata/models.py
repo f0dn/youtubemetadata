@@ -144,6 +144,8 @@ class TrackEntry(BaseModel):
     creditsBrowseId: str | None = None
     lyrics: str | None = None
     lyricsSource: str | None = None
+    writtenBy: list[str] = Field(default_factory=list)
+    producedBy: list[str] = Field(default_factory=list)
 
 
 class PlaylistResolution(BaseModel):

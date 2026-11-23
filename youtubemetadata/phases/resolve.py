@@ -41,7 +41,6 @@ def _split_album_version(album_nm: str | None) -> tuple[str | None, str]:
         for kw in (
             "deluxe",
             "remastered",
-            "explicit",
             "anniversary",
             "expanded",
             "bonus",

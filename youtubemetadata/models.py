@@ -131,6 +131,7 @@ class TrackEntry(BaseModel):
     artists: list[str] = Field(default_factory=list)
     album: str = "Unknown"
     albumArtist: list[str] = Field(default_factory=list)
+    albumDescription: str | None = None
     trackNumber: int | None = None
     trackTotal: int | None = None
     year: int | str | None = None

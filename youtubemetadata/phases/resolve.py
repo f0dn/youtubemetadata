@@ -115,6 +115,7 @@ def phase_resolve(
             else (raw_album if isinstance(raw_album, str) else None)
         )
         album_art = None
+        album_description = None
         year = None
         track_tot = None
         track_no = None
@@ -127,6 +128,7 @@ def phase_resolve(
         if album is not None:
             album_nm = album.title or album_nm
             album_art = [a.name for a in album.artists if a.name] or [artist]
+            album_description = album.description
             year = album.year
             track_tot = album.trackCount
             # the audio track (ATV) may not be an album track itself, so fall back to the
@@ -184,6 +186,7 @@ def phase_resolve(
                 artists=artist_names,
                 album=album_nm or "Unknown",
                 albumArtist=list(album_art) if album_art else [artist],
+                albumDescription=album_description,
                 trackNumber=track_no,
                 trackTotal=track_tot,
                 year=year,

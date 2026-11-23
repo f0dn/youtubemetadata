@@ -135,7 +135,15 @@ def test_resolve_uses_song_credits_for_multiple_artists() -> None:
     assert entry.artist == "Jay-Z"
     assert entry.artists == ["Jay-Z", "Alicia Keys"]
     assert entry.albumArtist == ["Jay-Z"]
+    assert entry.albumDescription is None
     assert entry.trackNumber == 1
     assert entry.trackTotal == 2
     assert entry.writtenBy == ["Jay-Z", "Alicia Keys"]
     assert entry.producedBy == ["Various"]
+
+
+def test_album_version_detection() -> None:
+    assert resolve_phase._split_album_version("Song (Deluxe Version)") == ("Deluxe", "Song")
+    assert resolve_phase._split_album_version("Song (Remastered)") == ("Remastered", "Song")
+    assert resolve_phase._split_album_version("Song") == (None, "Song")
+    assert resolve_phase._split_album_version(None) == (None, "")

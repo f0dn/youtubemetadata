@@ -25,6 +25,35 @@ def _normalize_title(title: str | None) -> str:
     return re.sub(r"[^a-z0-9]+", "", stripped.lower())
 
 
+def _split_album_version(album_nm: str | None) -> tuple[str | None, str]:
+    """Split an album-version tag from the album name.
+
+    The version is only considered when it appears in parentheses, e.g.
+    "Song (Deluxe Version)" -> ("Deluxe", "Song"). Returns (version, clean_name).
+    """
+    if not album_nm:
+        return None, ""
+    clean = album_nm.strip()
+    version = None
+    m = re.search(r"\(([^)]*)\)", clean)
+    if m:
+        inner = m.group(1).lower()
+        for kw in (
+            "deluxe",
+            "remastered",
+            "explicit",
+            "anniversary",
+            "expanded",
+            "bonus",
+            "acoustic",
+            "live",
+        ):
+            if kw in inner:
+                version = kw.capitalize()
+        clean = clean[: m.start()].strip()
+    return version, clean or album_nm.strip()
+
+
 def phase_resolve(
     playlist_url: str, service: YouTubeMusicService | None = None
 ) -> PlaylistResolution:
@@ -177,6 +206,8 @@ def phase_resolve(
                 n for n in (song_credits.produced_by.data if song_credits.produced_by else []) if n
             ]
 
+        album_version, album_nm = _split_album_version(album_nm)
+
         entries.append(
             TrackEntry(
                 index=idx,
@@ -200,6 +231,7 @@ def phase_resolve(
                 creditsBrowseId=src.creditsBrowseId or t.creditsBrowseId,
                 writtenBy=written_by,
                 producedBy=produced_by,
+                albumVersion=album_version,
             )
         )
 

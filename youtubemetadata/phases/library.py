@@ -125,10 +125,6 @@ def phase_library(resolution: PlaylistResolution, library_path: str | Path) -> P
     copies + tags the downloaded audio tracks accordingly (Navidrome tag mapping).
     """
     lib = Path(library_path).expanduser()
-    # clear any previous library content before writing the new one
-    if lib.exists():
-        shutil.rmtree(lib)
-    lib.mkdir(parents=True, exist_ok=True)
 
     written = 0
     skipped = 0

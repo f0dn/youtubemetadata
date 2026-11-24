@@ -18,7 +18,7 @@ def phase_download(resolution: PlaylistResolution) -> PlaylistResolution:
     for i, tr in enumerate(resolution.tracks, 1):
         vid = tr.videoId
         track_dir = RAW_DIR / vid
-        audio_f = track_dir / "audio"
+        audio_f = track_dir / "audio.m4a"
 
         if audio_f.exists():
             print(f"  [{i}/{n}] ⏭  {tr.title}  (cached)")
@@ -41,7 +41,7 @@ def phase_download(resolution: PlaylistResolution) -> PlaylistResolution:
             "format": "bestaudio[ext=m4a]/bestaudio",
             "merge_output_format": "m4a",
             "write_thumbnail": True,
-            "outtmpl": str(track_dir / "audio"),
+            "outtmpl": str(track_dir / "audio.m4a"),
             "noplaylist": True,
         }
         try:

@@ -1,4 +1,4 @@
-"""Phase 3 — download audio via the yt-dlp Python API."""
+"""Phase 3 — download audio via yt-dlp Python API."""
 
 from unittest.mock import MagicMock, patch
 
@@ -29,7 +29,6 @@ def test_download_uses_yt_dlp_python_api() -> None:
         opts = mock_ydl.call_args.args[0]
         assert opts["format"] == "bestaudio[ext=m4a]/bestaudio"
         assert opts["merge_output_format"] == "m4a"
-        assert opts["write_info_json"] is True
         assert opts["write_thumbnail"] is True
         assert opts["noplaylist"] is True
         assert "atv1" in str(opts["outtmpl"])

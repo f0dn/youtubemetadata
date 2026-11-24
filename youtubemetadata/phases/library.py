@@ -48,7 +48,9 @@ def _tag_values(entry: TrackEntry) -> dict[str, Any]:
     album_artist_list = _album_artist_list(entry, artist_list)
     values: dict[str, Any] = {
         "title": entry.title or "Unknown",
+        "artist": _display_artist(artist_list),
         "artists": artist_list,
+        "albumartist": _display_artist(album_artist_list),
         "albumartists": album_artist_list,
         "album": entry.album or "Unknown",
     }
@@ -87,34 +89,35 @@ def _write_tags(path: Path, values: dict[str, Any]) -> bool:
             tag.add_tags()
         mp4 = tag.tags
 
-        def set_str(name: str, value: Any) -> None:
+        def set_atom(key: str, value: Any) -> None:
             if value is None:
                 return
-            mp4[name] = str(value).encode("utf-8")
+            mp4[key] = str(value)
 
-        def set_css(name: str, value: Any) -> None:
+        def set_freeform(key: str, value: Any) -> None:
             if value is None:
                 return
-            mp4[name] = str(value)
+            if isinstance(value, list):
+                mp4[key] = [str(v).encode("utf-8") for v in value]
+            else:
+                mp4[key] = str(value).encode("utf-8")
 
-        def set_multi(name: str, items: list[str]) -> None:
-            clean = [str(i).strip() for i in items or [] if str(i).strip()]
-            if clean:
-                mp4[name] = [i.encode("utf-8") for i in clean]
-
-        set_css("\N{COPYRIGHT SIGN}nam", values.get("title"))
-        set_multi("----:com.apple.iTunes:ARTISTS", values.get("artists") or [])
-        set_multi("----:com.apple.iTunes:ALBUMARTISTS", values.get("albumartists") or [])
-        set_css("\N{COPYRIGHT SIGN}alb", values.get("album"))
-        set_css("\N{COPYRIGHT SIGN}wrt", values.get("composer"))
-        set_str("----:com.apple.iTunes:PRODUCER", values.get("producer"))
-        set_str("----:com.apple.iTunes:ALBUMVERSION", values.get("albumversion"))
-        set_str("----:com.apple.iTunes:LYRICS", values.get("lyrics"))
-        set_css("\N{COPYRIGHT SIGN}day", values.get("releasedate"))
+        set_atom("\N{COPYRIGHT SIGN}nam", values.get("title"))
+        set_atom("\N{COPYRIGHT SIGN}ART", values.get("artist"))
+        set_freeform("----:com.apple.iTunes:artists", values.get("artists") or [])
+        set_atom("aART", values.get("albumartist"))
+        set_freeform("----:com.apple.iTunes:albumartists", values.get("albumartists") or [])
+        set_atom("\N{COPYRIGHT SIGN}alb", values.get("album"))
+        set_atom("\N{COPYRIGHT SIGN}wrt", values.get("composer"))
+        set_freeform("----:com.apple.iTunes:producer", values.get("producer"))
+        set_freeform("----:com.apple.iTunes:albumversion", values.get("albumversion"))
+        set_freeform("----:com.apple.iTunes:lyrics", values.get("lyrics"))
+        set_atom("\N{COPYRIGHT SIGN}day", values.get("releasedate"))
         if values.get("track") is not None and values.get("tracktotal") is not None:
-            mp4["trkn"] = [(values.get("track"), values.get("tracktotal"))]
-        mp4["rtng"] = [1 if values.get("explicitstatus") else 2]
-        set_css("\N{COPYRIGHT SIGN}cmt", values.get("comment"))
+            mp4["trkn"] = (int(values["track"]), int(values["tracktotal"]))
+        if values.get("explicitstatus") is not None:
+            mp4["rtng"] = int(values["explicitstatus"])
+        set_atom("\N{COPYRIGHT SIGN}cmt", values.get("comment"))
         tag.save()
     except Exception:
         return False
@@ -144,10 +147,14 @@ def phase_library(resolution: PlaylistResolution, library_path: str | Path) -> P
             skipped += 1
             continue
 
+        album_name = entry.album or "Unknown"
+        if entry.albumVersion:
+            album_name = f"{album_name} ({entry.albumVersion})"
+
         dest = (
             lib
             / _sanitize(_display_artist(_artist_list(entry)))
-            / _sanitize(entry.album)
+            / _sanitize(album_name)
             / f"{entry.trackNumber or entry.index:02d} - {_sanitize(entry.title)}.m4a"
         )
         dest.parent.mkdir(parents=True, exist_ok=True)

@@ -40,7 +40,6 @@ def phase_download(resolution: PlaylistResolution) -> PlaylistResolution:
         ydl_opts = {
             "format": "bestaudio[ext=m4a]/bestaudio",
             "merge_output_format": "m4a",
-            "write_info_json": True,
             "write_thumbnail": True,
             "outtmpl": str(track_dir / "audio"),
             "noplaylist": True,

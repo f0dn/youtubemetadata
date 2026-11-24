@@ -92,26 +92,29 @@ def _write_tags(path: Path, values: dict[str, Any]) -> bool:
                 return
             mp4[name] = str(value).encode("utf-8")
 
+        def set_css(name: str, value: Any) -> None:
+            if value is None:
+                return
+            mp4[name] = str(value)
+
         def set_multi(name: str, items: list[str]) -> None:
             clean = [str(i).strip() for i in items or [] if str(i).strip()]
             if clean:
                 mp4[name] = [i.encode("utf-8") for i in clean]
 
-        set_str("title", values.get("title"))
-        set_multi("artists", values.get("artists") or [])
-        set_multi("albumartists", values.get("albumartists") or [])
-        set_str("album", values.get("album"))
-        set_str("composer", values.get("composer"))
-        set_str("producer", values.get("producer"))
-        set_str("albumversion", values.get("albumversion"))
-        set_str("lyrics", values.get("lyrics"))
-        set_str("releasedate", values.get("releasedate"))
+        set_css("\N{COPYRIGHT SIGN}nam", values.get("title"))
+        set_multi("----:com.apple.iTunes:ARTISTS", values.get("artists") or [])
+        set_multi("----:com.apple.iTunes:ALBUMARTISTS", values.get("albumartists") or [])
+        set_css("\N{COPYRIGHT SIGN}alb", values.get("album"))
+        set_css("\N{COPYRIGHT SIGN}wrt", values.get("composer"))
+        set_str("----:com.apple.iTunes:PRODUCER", values.get("producer"))
+        set_str("----:com.apple.iTunes:ALBUMVERSION", values.get("albumversion"))
+        set_str("----:com.apple.iTunes:LYRICS", values.get("lyrics"))
+        set_css("\N{COPYRIGHT SIGN}day", values.get("releasedate"))
         if values.get("track") is not None and values.get("tracktotal") is not None:
-            mp4["track"] = str(values["track"]).encode("utf-8")
-            mp4["tracktotal"] = str(values["tracktotal"]).encode("utf-8")
-        set_str("explicitstatus", values.get("explicitstatus"))
-        set_str("explicitstatus", values.get("explicitstatus"))
-        set_str("comment", values.get("comment"))
+            mp4["trkn"] = [(values.get("track"), values.get("tracktotal"))]
+        mp4["rtng"] = [1 if values.get("explicitstatus") else 2]
+        set_css("\N{COPYRIGHT SIGN}cmt", values.get("comment"))
         tag.save()
     except Exception:
         return False

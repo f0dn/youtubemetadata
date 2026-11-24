@@ -1,21 +1,18 @@
-"""YouTube Music metadata sync.
+"""YouTube Music metadata → Navidrome library.
 
 Phases:
     resolve   — collect all albums of a playlist and save every song that is also in it
     lyrics    — fetch lyrics for the resolved tracks (optional)
     download  — download the audio of the resolved tracks via yt-dlp
+    library   — write the resolved tracks into a Navidrome-compatible library
 
 Usage:
-    python -m youtubemetadata.pipeline resolve <playlist_url>
-    python -m youtubemetadata.pipeline lyrics <playlist_url>
-    python -m youtubemetadata.pipeline download <playlist_url>
-    python -m youtubemetadata.pipeline full <playlist_url>
+    python -m youtubemetadata.pipeline <playlist_url> <library_path>
 """
 
 import argparse
-import sys
 
-from youtubemetadata.phases import download, lyrics, resolve
+from youtubemetadata.phases import download, library, lyrics, resolve
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -23,48 +20,20 @@ def build_parser() -> argparse.ArgumentParser:
         prog="youtubemetadata",
         description="Include proper song metadata in YouTube Music.",
     )
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    sub = subparsers.add_parser(
-        "resolve",
-        help="collect all albums of a playlist and save every song that is also in it",
-    )
-    sub.add_argument("playlist_url", help="YouTube playlist URL")
-
-    sub = subparsers.add_parser("lyrics", help="fetch lyrics for the resolved tracks")
-    sub.add_argument("playlist_url", help="YouTube playlist URL")
-
-    sub = subparsers.add_parser(
-        "download", help="download the audio of the resolved tracks via yt-dlp"
-    )
-    sub.add_argument("playlist_url", help="YouTube playlist URL")
-
-    sub = subparsers.add_parser(
-        "full", help="resolve, fetch lyrics and download audio for a playlist"
-    )
-    sub.add_argument("playlist_url", help="YouTube playlist URL")
-
+    parser.add_argument("playlist_url", help="YouTube playlist URL")
+    parser.add_argument("library_path", help="path to the Navidrome library directory to write to")
     return parser
 
 
 def run(argv: list[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
-    cmd = args.command
 
-    if cmd == "resolve":
-        resolve.phase_resolve(args.playlist_url)
-    elif cmd == "lyrics":
-        lyrics.phase_lyrics(resolve.phase_resolve(args.playlist_url))
-    elif cmd == "download":
-        download.phase_download(resolve.phase_resolve(args.playlist_url))
-    elif cmd == "full":
-        resolution = resolve.phase_resolve(args.playlist_url)
-        lyrics.phase_lyrics(resolution)
-        download.phase_download(resolution)
-    else:  # pragma: no cover - argparse enforces the choices above
-        parser.print_help()
-        sys.exit(2)
+    resolution = resolve.phase_resolve(args.playlist_url)
+    lyrics.phase_lyrics(resolution)
+    download.phase_download(resolution)
+    lib = library.phase_library(resolution, args.library_path)
+    print(f"\nNavidrome library written → {lib}")
 
 
 if __name__ == "__main__":

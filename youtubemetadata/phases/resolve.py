@@ -1,6 +1,5 @@
 """Phase 1 — resolve a playlist into album-backed song metadata."""
 
-import json
 import re
 
 from youtubemetadata.models import (
@@ -11,7 +10,6 @@ from youtubemetadata.models import (
     Track,
     TrackEntry,
 )
-from youtubemetadata.paths import MANIFEST
 from youtubemetadata.services import YouTubeMusicService, is_music_video
 from youtubemetadata.utils import extract_playlist_id
 
@@ -242,10 +240,6 @@ def phase_resolve(
         tracks=entries,
     )
 
-    MANIFEST.write_text(
-        json.dumps(resolution.model_dump(mode="json"), indent=2, ensure_ascii=False)
-    )
-
     # quick summary
     with_no_album = sum(1 for m in resolution.tracks if m.trackNumber is None)
     music_vids = sum(1 for m in resolution.tracks if m.isMusicVideo)
@@ -260,7 +254,5 @@ def phase_resolve(
         )
     if music_vids:
         print(f"  ♪  {music_vids} track(s) were music videos — swapped for audio tracks")
-
-    print(f"\nManifest saved → {MANIFEST}")
 
     return resolution

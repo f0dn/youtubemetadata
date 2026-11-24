@@ -1,25 +1,32 @@
 """CLI tests for the pipeline."""
 
-from youtubemetadata.pipeline import build_parser
+from unittest.mock import MagicMock, patch
+
+from youtubemetadata.pipeline import build_parser, run
 
 
-def test_parser_accepts_resolve_subcommand() -> None:
+def test_parser_accepts_playlist_and_library() -> None:
     parser = build_parser()
-    args = parser.parse_args(["resolve", "https://www.youtube.com/playlist?list=PLabc"])
-    assert args.command == "resolve"
+    args = parser.parse_args(
+        ["https://www.youtube.com/playlist?list=PLabc", "/tmp/navidrome-library"]
+    )
     assert args.playlist_url == "https://www.youtube.com/playlist?list=PLabc"
+    assert args.library_path == "/tmp/navidrome-library"
 
 
-def test_parser_accepts_full_subcommand() -> None:
-    parser = build_parser()
-    args = parser.parse_args(["full", "https://music.youtube.com/playlist?list=PLGuOJ7hPNiJA"])
-    assert args.command == "full"
-    assert args.playlist_url == "https://music.youtube.com/playlist?list=PLGuOJ7hPNiJA"
+def test_run_resolves_lyrics_downloads_and_writes_library() -> None:
+    resolution = MagicMock()
+    with (
+        patch(
+            "youtubemetadata.pipeline.resolve.phase_resolve", return_value=resolution
+        ) as mock_resolve,
+        patch("youtubemetadata.pipeline.lyrics.phase_lyrics") as mock_lyrics,
+        patch("youtubemetadata.pipeline.download.phase_download") as mock_download,
+        patch("youtubemetadata.pipeline.library.phase_library") as mock_library,
+    ):
+        run(["https://www.youtube.com/playlist?list=PLabc", "/tmp/navidrome-library"])
 
-
-def test_parser_rejects_unknown_subcommand() -> None:
-    import pytest
-
-    parser = build_parser()
-    with pytest.raises(SystemExit):
-        parser.parse_args(["bogus", "https://www.youtube.com/playlist?list=PLabc"])
+    mock_resolve.assert_called_once_with("https://www.youtube.com/playlist?list=PLabc")
+    mock_lyrics.assert_called_once_with(resolution)
+    mock_download.assert_called_once_with(resolution)
+    mock_library.assert_called_once_with(resolution, "/tmp/navidrome-library")

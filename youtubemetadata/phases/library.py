@@ -23,7 +23,7 @@ def _sanitize(name: str | None) -> str:
 
 def _artist_list(entry: TrackEntry) -> list[str]:
     """Individual artists of a track (credits-expanded), fallback to the main artist."""
-    artists = entry.artists or ([entry.artist] if entry.artist else [])
+    artists = entry.albumArtist
     cleaned = [a.strip() for a in artists if (a or "").strip()]
     return cleaned or ["Unknown"]
 

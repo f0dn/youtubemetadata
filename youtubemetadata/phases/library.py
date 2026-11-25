@@ -138,7 +138,7 @@ def _embed_cover(path: Path, cover: Path | None) -> bool:
             buffer = io.BytesIO()
             img.save(buffer, format="PNG")
             data = buffer.getvalue()
-        tag.tags["APIC::"] = MP4Cover(data, imageformat=MP4Cover.FORMAT_PNG)
+        tag.tags["covr"] = [MP4Cover(data, imageformat=MP4Cover.FORMAT_PNG)]
         tag.save()
         return True
     except Exception:

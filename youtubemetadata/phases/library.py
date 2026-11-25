@@ -114,12 +114,13 @@ def _write_tags(path: Path, values: dict[str, Any]) -> bool:
         set_freeform("----:com.apple.iTunes:lyrics", values.get("lyrics"))
         set_atom("\N{COPYRIGHT SIGN}day", values.get("releasedate"))
         if values.get("track") is not None and values.get("tracktotal") is not None:
-            mp4["trkn"] = (int(values["track"]), int(values["tracktotal"]))
+            mp4["trkn"] = [(int(values["track"]), int(values["tracktotal"]))]
         if values.get("explicitstatus") is not None:
-            mp4["rtng"] = int(values["explicitstatus"])
+            mp4["rtng"] = [int(values["explicitstatus"])]
         set_atom("\N{COPYRIGHT SIGN}cmt", values.get("comment"))
         tag.save()
-    except Exception:
+    except Exception as e:
+        raise e
         return False
     return True
 

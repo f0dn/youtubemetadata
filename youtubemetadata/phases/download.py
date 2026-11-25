@@ -40,9 +40,15 @@ def phase_download(resolution: PlaylistResolution) -> PlaylistResolution:
         ydl_opts = {
             "format": "bestaudio[ext=m4a]/bestaudio",
             "merge_output_format": "m4a",
-            "write_thumbnail": True,
+            "writethumbnail": True,
             "outtmpl": str(track_dir / "audio.m4a"),
             "noplaylist": True,
+            "postprocessors": [
+                {
+                    "key": "EmbedThumbnail",
+                    "already_have_thumbnail": False,
+                }
+            ],
         }
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:

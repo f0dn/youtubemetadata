@@ -197,3 +197,32 @@ def test_tag_values_join_multiple_artists_with_feat() -> None:
     assert values["artists"] == ["Jay-Z", "Alicia Keys"]
     assert values["albumartist"] == "Jay-Z"
     assert values["albumartists"] == ["Jay-Z"]
+
+
+def test_embed_cover_writes_apic(tmp_path: Path) -> None:
+    audio = tmp_path / "song.m4a"
+    audio.write_bytes(b"fake")
+    cover = tmp_path / "audio.jpg"
+    cover.write_bytes(b"jpeg")
+
+    fake_mp4_class = type("FakeMP4", (), {"save": MagicMock()})
+    tag = fake_mp4_class()
+    tag.tags = MagicMock()
+
+    with (
+        patch("youtubemetadata.phases.library.MutagenFile", return_value=tag),
+        patch("youtubemetadata.phases.library.MP4Tag", fake_mp4_class),
+    ):
+        ok = library_phase._embed_cover(audio, cover)
+
+    assert ok is True
+    tag.tags.__setitem__.assert_called_once()
+    assert tag.tags.__setitem__.call_args.args[0] == "APIC::"
+    tag.save.assert_called_once()
+
+
+def test_embed_cover_returns_false_without_cover(tmp_path: Path) -> None:
+    audio = tmp_path / "song.m4a"
+    audio.write_bytes(b"fake")
+    assert library_phase._embed_cover(audio, None) is False
+    assert library_phase._embed_cover(audio, tmp_path / "missing.jpg") is False

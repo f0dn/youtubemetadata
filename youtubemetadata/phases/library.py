@@ -48,9 +48,7 @@ def _tag_values(entry: TrackEntry) -> dict[str, Any]:
     album_artist_list = _album_artist_list(entry, artist_list)
     values: dict[str, Any] = {
         "title": entry.title or "Unknown",
-        "artist": _display_artist(artist_list),
         "artists": artist_list,
-        "albumartist": _display_artist(album_artist_list),
         "albumartists": album_artist_list,
         "album": entry.album or "Unknown",
     }

@@ -19,7 +19,7 @@ def phase_download(resolution: PlaylistResolution) -> PlaylistResolution:
         vid = tr.videoId
         track_dir = RAW_DIR / vid
         audio_f = track_dir / "audio.m4a"
-        art_f = track_dir / "audio.jpg"
+        art_f = track_dir / "audio.webp"
 
         if audio_f.exists() and art_f.exists():
             print(f"  [{i}/{n}] ⏭  {tr.title}  (cached)")

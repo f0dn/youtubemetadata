@@ -202,7 +202,7 @@ def test_tag_values_join_multiple_artists_with_feat() -> None:
 def test_embed_cover_writes_apic(tmp_path: Path) -> None:
     audio = tmp_path / "song.m4a"
     audio.write_bytes(b"fake")
-    cover = tmp_path / "audio.jpg"
+    cover = tmp_path / "audio.webp"
     cover.write_bytes(b"jpeg")
 
     fake_mp4_class = type("FakeMP4", (), {"save": MagicMock()})
@@ -225,4 +225,4 @@ def test_embed_cover_returns_false_without_cover(tmp_path: Path) -> None:
     audio = tmp_path / "song.m4a"
     audio.write_bytes(b"fake")
     assert library_phase._embed_cover(audio, None) is False
-    assert library_phase._embed_cover(audio, tmp_path / "missing.jpg") is False
+    assert library_phase._embed_cover(audio, tmp_path / "missing.webp") is False

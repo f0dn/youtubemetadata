@@ -165,8 +165,8 @@ def phase_library(resolution: PlaylistResolution, library_path: str | Path) -> P
         if not src_file.is_file():
             skipped += 1
             continue
-        # yt-dlp wrote the pulled album art next to the audio (audio.m4a → audio.jpg)
-        cover_file = RAW_DIR / entry.videoId / "audio.jpg"
+        # yt-dlp wrote the pulled album art next to the audio (audio.m4a → audio.webp)
+        cover_file = RAW_DIR / entry.videoId / "audio.webp"
 
         album_name = entry.album or "Unknown"
         if entry.albumVersion:

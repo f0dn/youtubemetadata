@@ -1,9 +1,11 @@
 """Phase 4 — write the resolved tracks into a Navidrome-compatible library."""
 
+import io
 import re
 import shutil
 from pathlib import Path
 from typing import Any
+from PIL import Image
 
 from mutagen import File as MutagenFile
 from mutagen.mp4 import MP4 as MP4Tag, MP4Cover
@@ -123,7 +125,7 @@ def _write_tags(path: Path, values: dict[str, Any]) -> bool:
 
 
 def _embed_cover(path: Path, cover: Path | None) -> bool:
-    """Embed album art (JPEG) into an MP4 / m4a file. Returns True on success."""
+    """Embed album art (WEBP) into an MP4 / m4a file. Returns True on success."""
     if not cover or not cover.is_file():
         return False
     try:
@@ -132,8 +134,11 @@ def _embed_cover(path: Path, cover: Path | None) -> bool:
             return False
         if tag.tags is None:
             tag.add_tags()
-        data = cover.read_bytes()
-        tag.tags["APIC::"] = MP4Cover(data, imageformat=MP4Cover.FORMAT_JPEG)
+        with Image.open(cover) as img:
+            buffer = io.BytesIO()
+            img.save(buffer, format="PNG")
+            data = buffer.getvalue()
+        tag.tags["APIC::"] = MP4Cover(data, imageformat=MP4Cover.FORMAT_PNG)
         tag.save()
         return True
     except Exception:

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from mutagen import File as MutagenFile
-from mutagen.mp4 import MP4 as MP4Tag
+from mutagen.mp4 import MP4 as MP4Tag, MP4Cover
 
 from youtubemetadata.models import PlaylistResolution, TrackEntry
 from youtubemetadata.paths import RAW_DIR
@@ -119,10 +119,27 @@ def _write_tags(path: Path, values: dict[str, Any]) -> bool:
             mp4["rtng"] = [int(values["explicitstatus"])]
         set_atom("\N{COPYRIGHT SIGN}cmt", values.get("comment"))
         tag.save()
-    except Exception as e:
-        raise e
+    except Exception:
         return False
     return True
+
+
+def _embed_cover(path: Path, cover: Path | None) -> bool:
+    """Embed album art (JPEG) into an MP4 / m4a file. Returns True on success."""
+    if not cover or not cover.is_file():
+        return False
+    try:
+        tag = MutagenFile(path)
+        if not isinstance(tag, MP4Tag):
+            return False
+        if tag.tags is None:
+            tag.add_tags()
+        data = cover.read_bytes()
+        tag.tags["APIC::"] = MP4Cover(data, imageformat=MP4Cover.FORMAT_JPEG)
+        tag.save()
+        return True
+    except Exception:
+        return False
 
 
 def phase_library(resolution: PlaylistResolution, library_path: str | Path) -> Path:
@@ -132,6 +149,7 @@ def phase_library(resolution: PlaylistResolution, library_path: str | Path) -> P
     copies + tags the downloaded audio tracks accordingly (Navidrome tag mapping).
     """
     lib = Path(library_path).expanduser()
+    lib.mkdir(parents=True, exist_ok=True)
 
     written = 0
     skipped = 0
@@ -147,6 +165,8 @@ def phase_library(resolution: PlaylistResolution, library_path: str | Path) -> P
         if not src_file.is_file():
             skipped += 1
             continue
+        # yt-dlp wrote the pulled album art next to the audio (audio.m4a → audio.jpg)
+        cover_file = RAW_DIR / entry.videoId / "audio.jpg"
 
         album_name = entry.album or "Unknown"
         if entry.albumVersion:
@@ -160,7 +180,9 @@ def phase_library(resolution: PlaylistResolution, library_path: str | Path) -> P
         )
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src_file, dest)
-        _write_tags(dest, _tag_values(entry))
+        wrote = _write_tags(dest, _tag_values(entry))
+        if wrote:
+            _embed_cover(dest, cover_file)
         written += 1
 
     print(f"Navidrome library written → {lib}  ({written} track(s), {skipped} skipped)")

@@ -19,8 +19,9 @@ def phase_download(resolution: PlaylistResolution) -> PlaylistResolution:
         vid = tr.videoId
         track_dir = RAW_DIR / vid
         audio_f = track_dir / "audio.m4a"
+        art_f = track_dir / "audio.jpg"
 
-        if audio_f.exists():
+        if audio_f.exists() and art_f.exists():
             print(f"  [{i}/{n}] ⏭  {tr.title}  (cached)")
             continue
         if not tr.isAvailable:
@@ -43,12 +44,6 @@ def phase_download(resolution: PlaylistResolution) -> PlaylistResolution:
             "writethumbnail": True,
             "outtmpl": str(track_dir / "audio.m4a"),
             "noplaylist": True,
-            "postprocessors": [
-                {
-                    "key": "EmbedThumbnail",
-                    "already_have_thumbnail": False,
-                }
-            ],
         }
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:

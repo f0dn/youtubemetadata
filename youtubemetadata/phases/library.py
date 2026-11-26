@@ -154,6 +154,10 @@ def phase_library(resolution: PlaylistResolution, library_path: str | Path) -> P
     lib = Path(library_path).expanduser()
     lib.mkdir(parents=True, exist_ok=True)
 
+    print(f"\n{'=' * 60}")
+    print(f"PHASE 4 — Write library  ({len(resolution.tracks)} tracks)")
+    print(f"{'=' * 60}")
+
     written = 0
     skipped = 0
     for entry in resolution.tracks:

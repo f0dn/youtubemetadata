@@ -75,6 +75,10 @@ def phase_resolve(
         if t.album and t.album.id:
             album_ids.add(t.album.id)
 
+    print(f"\n{'=' * 60}")
+    print(f"PHASE 1 — Resolve albums  ({len(album_ids)} albums)")
+    print(f"{'=' * 60}")
+
     albums: dict[str, Album | None] = {}
     for i, aid in enumerate(sorted(album_ids), 1):
         try:

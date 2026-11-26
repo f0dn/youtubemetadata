@@ -56,6 +56,10 @@ def phase_resolve(
 ) -> PlaylistResolution:
     """Collect all albums of a playlist and save (cache) every song that is also in it.
 
+    Every song of every resolved album is part of the resolution — not just the songs the
+    playlist happens to feature: a playlist holding 2 songs from 2 albums resolves to all
+    songs of both albums (each album is saved in full).
+
     Music videos encountered along the way are swapped for their actual audio track.
     """
     svc = service or YouTubeMusicService()
@@ -104,10 +108,30 @@ def phase_resolve(
         if numbers and min(numbers) == 0:
             album_zero_based.add(aid)
 
-    entries: list[TrackEntry] = []
+    # the playlist's own tracks come first (with their music-video → audio swaps); every
+    # song of a resolved album that the playlist does not feature is appended afterwards, so
+    # each album resolves to all of its songs
+    sources: list[Track] = list(tracks)
+    seen: set[str] = set()
+    for t in tracks:
+        if t.videoId:
+            seen.add(t.videoId)
+    for aid in sorted(albums):
+        album = albums.get(aid)
+        if album is None:
+            continue
+        for at in album.tracks or []:
+            if at.videoId and at.videoId not in seen:
+                sources.append(at)
+                seen.add(at.videoId)
 
-    for idx, t in enumerate(tracks, 1):
+    entries: list[TrackEntry] = []
+    processed: set[str] = set()
+
+    for idx, t in enumerate(sources, 1):
         vid = t.videoId
+        if vid and vid in processed:
+            continue
         track = album_tracks.get(vid) or t
 
         audio_vid = vid
@@ -118,7 +142,7 @@ def phase_resolve(
         if is_music:
             # music videos (e.g. MUSIC_VIDEO_TYPE_OMV) are not audio tracks — swap for the
             # actual audio track (MUSIC_VIDEO_TYPE_ATV) via the watch page related list
-            print(f"  [{idx}/{len(tracks)}] ♪ music video → audio track  {vid}  {t.title}")
+            print(f"  [{idx}/{len(sources)}] ♪ music video → audio track  {vid}  {t.title}")
             related = svc.get_music_video_audio(
                 vid, t.title, t.artists[0].name if t.artists else None
             )
@@ -127,8 +151,12 @@ def phase_resolve(
                 audio_vid = related.videoId
                 music_video_of = vid
                 print(
-                    f"  [{idx}/{len(tracks)}] ♪ music video → audio track  {vid}  {t.title}  →  {audio_vid}"
+                    f"  [{idx}/{len(sources)}] ♪ music video → audio track  {vid}  {t.title}  →  {audio_vid}"
                 )
+
+        processed.add(vid)
+        if audio_vid and audio_vid not in processed:
+            processed.add(audio_vid)
 
         artists = [a.name or "" for a in src.artists]
         artist_names = [a for a in artists if a]
@@ -182,7 +210,7 @@ def phase_resolve(
             try:
                 song_credits = svc.get_song(sid)
             except Exception as e:
-                print(f"  [{idx}/{len(tracks)}] ✗ song {audio_vid}  {e}")
+                print(f"  [{idx}/{len(sources)}] ✗ song {audio_vid}  {e}")
 
         # a track can list a single artist while the song credits list several
         # (e.g. "Empire State of Mind" — Jay-Z + Alicia Keys); prefer the credits then
@@ -235,7 +263,7 @@ def phase_resolve(
     resolution = PlaylistResolution(
         playlistId=pid,
         playlistTitle=playlist.title or "Unknown",
-        totalTracks=len(tracks),
+        totalTracks=len(entries),
         uniqueAlbums=len(album_ids),
         tracks=entries,
     )

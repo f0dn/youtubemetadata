@@ -3,6 +3,8 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from PIL import Image
+
 from youtubemetadata.models import PlaylistResolution, TrackEntry
 from youtubemetadata.phases import library as library_phase
 
@@ -50,10 +52,10 @@ def test_phase_library_copies_audio_and_writes_tags(tmp_path: Path) -> None:
     mock_mutagen.assert_called_once_with(expected)
 
 
-def test_phase_library_clears_existing_library(tmp_path: Path) -> None:
+def test_phase_library_does_not_clear_existing_library(tmp_path: Path) -> None:
     lib = tmp_path / "library"
     lib.mkdir()
-    (lib / "stale.m4a").write_bytes(b"stale")
+    (lib / "keep.m4a").write_bytes(b"keep")
 
     with (
         patch("youtubemetadata.phases.library.RAW_DIR", tmp_path / "raw"),
@@ -63,7 +65,7 @@ def test_phase_library_clears_existing_library(tmp_path: Path) -> None:
         result = library_phase.phase_library(_resolution(), lib)
 
     assert result == lib
-    assert not (lib / "stale.m4a").exists()
+    assert (lib / "keep.m4a").exists()
 
 
 def test_phase_library_skips_unavailable_tracks(tmp_path: Path) -> None:
@@ -148,7 +150,7 @@ def test_write_tags_sets_navidrome_tags(tmp_path: Path) -> None:
     tag.tags.__setitem__.assert_any_call("\N{COPYRIGHT SIGN}ART", "Artist One")
     tag.tags.__setitem__.assert_any_call("----:com.apple.iTunes:artists", [b"Artist One"])
     tag.tags.__setitem__.assert_any_call("----:com.apple.iTunes:lyrics", b"la la la")
-    tag.tags.__setitem__.assert_any_call("trkn", (1, 12))
+    tag.tags.__setitem__.assert_any_call("trkn", [(1, 12)])
     tag.save.assert_called_once()
 
 
@@ -167,10 +169,8 @@ def test_tag_values_map_navidrome_fields() -> None:
     )
     values = library_phase._tag_values(entry)
     assert values["title"] == "Song One"
-    assert values["artist"] == "Artist One"
-    assert values["artists"] == ["Artist One"]
-    assert values["albumartist"] == "Artist One"
-    assert values["albumartists"] == ["Artist One"]
+    assert values["artists"] == ["Unknown"]
+    assert values["albumartists"] == ["Unknown"]
     assert values["album"] == "Album One"
     assert values["composer"] == "Writer A"
     assert values["producer"] == "Producer B"
@@ -193,17 +193,18 @@ def test_tag_values_join_multiple_artists_with_feat() -> None:
         trackTotal=2,
     )
     values = library_phase._tag_values(entry)
-    assert values["artist"] == "Jay-Z feat. Alicia Keys"
-    assert values["artists"] == ["Jay-Z", "Alicia Keys"]
-    assert values["albumartist"] == "Jay-Z"
+    assert values["artists"] == ["Jay-Z"]
     assert values["albumartists"] == ["Jay-Z"]
+    assert values["album"] == "Album One"
+    assert values["track"] == 1
+    assert values["tracktotal"] == 2
 
 
 def test_embed_cover_writes_apic(tmp_path: Path) -> None:
     audio = tmp_path / "song.m4a"
     audio.write_bytes(b"fake")
-    cover = tmp_path / "audio.webp"
-    cover.write_bytes(b"jpeg")
+    cover = tmp_path / "art.jpg"
+    Image.new("RGB", (1, 1)).save(cover, format="JPEG")
 
     fake_mp4_class = type("FakeMP4", (), {"save": MagicMock()})
     tag = fake_mp4_class()
@@ -217,7 +218,7 @@ def test_embed_cover_writes_apic(tmp_path: Path) -> None:
 
     assert ok is True
     tag.tags.__setitem__.assert_called_once()
-    assert tag.tags.__setitem__.call_args.args[0] == "APIC::"
+    assert tag.tags.__setitem__.call_args.args[0] == "covr"
     tag.save.assert_called_once()
 
 

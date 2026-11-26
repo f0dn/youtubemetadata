@@ -114,6 +114,8 @@ def phase_resolve(
         if numbers and min(numbers) == 0:
             album_zero_based.add(aid)
 
+    print(f"\nResolving tracks from albums  ({len(album_ids)} album(s))")
+
     # go straight to the albums: every song of a resolved album becomes a resolution entry
     # (playlist tracks are album tracks anyway), so each album resolves to all of its songs;
     # playlist leftovers without a usable album (singles, failed album fetches) come last
@@ -136,6 +138,8 @@ def phase_resolve(
         vid = t.videoId
         if vid and vid in processed:
             continue
+
+        print(f"  [{idx}/{len(sources)}] ✓ {t.title}  ({vid})")
         track = album_tracks.get(vid) or t
 
         audio_vid = vid

@@ -6,7 +6,14 @@ import time
 from ytmusicapi import YTMusic
 from ytmusicapi.models.content.enums import VideoType
 
-from youtubemetadata.cache import load_album, load_song, save_album, save_song
+from youtubemetadata.cache import (
+    load_album,
+    load_audio_playlist,
+    load_song,
+    save_album,
+    save_audio_playlist,
+    save_song,
+)
 from youtubemetadata.models import Album, Playlist, SongCredits, SongPlayback, Track
 
 MUSIC_VIDEO_TYPE_OMV = VideoType.OMV.value
@@ -65,6 +72,35 @@ class YouTubeMusicService:
             raw = self.yt.get_album(album_id)
             save_album(album_id, raw)
         return Album.model_validate(raw)
+
+    def get_audio_playlist(self, audio_playlist_id: str) -> list[Track]:
+        """Get the tracks of an audio playlist (``yt.get_playlist``), cached raw response."""
+        raw = load_audio_playlist(audio_playlist_id)
+        if raw is None:
+            time.sleep(SPEED)
+            raw = self.yt.get_playlist(audio_playlist_id, limit=None)
+            save_audio_playlist(audio_playlist_id, raw)
+        tracks: list[Track] = []
+        for item in (raw or {}).get("tracks") or []:
+            if isinstance(item, dict) and item.get("videoId"):
+                tracks.append(Track.model_validate(item))
+        return tracks
+
+    def get_album_audio_tracks(self, album: Album | None) -> list[Track]:
+        """Return the tracks of an album's audio-only playlist (``audioPlaylistId``).
+
+        The album track list can surface music videos (``MUSIC_VIDEO_TYPE_OMV``) even for
+        songs that are not music videos; the audio playlist linked via ``audioPlaylistId``
+        only contains actual audio tracks, so album tracks are resolved from there.
+
+        The raw audio playlist response is cached like any other raw metadata response.
+        Falls back to the album's own track list when the album has no audio playlist id.
+        """
+        if album is None:
+            return []
+        if not album.audioPlaylistId:
+            return list(album.tracks)
+        return self.get_audio_playlist(album.audioPlaylistId)
 
     # ─── songs (cached raw responses) ─────────────────────────────────
 

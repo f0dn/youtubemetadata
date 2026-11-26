@@ -84,6 +84,19 @@ class FakeService:
             )
         return None
 
+    def get_album_audio_tracks(self, album) -> list:
+        if album is None:
+            return []
+        if not album.audioPlaylistId:
+            return list(album.tracks or [])
+        # the audio-only playlist contains actual audio tracks — drop music videos; audio
+        # playlist items carry no track numbers (those come from the album track list)
+        return [
+            t.model_copy(update={"trackNumber": None})
+            for t in (album.tracks or [])
+            if t.videoType in ("MUSIC_VIDEO_TYPE_ATV", "MUSIC_VIDEO_TYPE_OFFICIAL_SOURCE_MUSIC")
+        ]
+
     def get_music_video_audio(
         self, video_id: str, omv_title: str | None = None, omv_artist: str | None = None
     ):
@@ -239,6 +252,19 @@ class TwoAlbumService:
         self, video_id: str, omv_title: str | None = None, omv_artist: str | None = None
     ):
         return None
+
+    def get_album_audio_tracks(self, album) -> list:
+        if album is None:
+            return []
+        if not album.audioPlaylistId:
+            return list(album.tracks or [])
+        # the audio-only playlist contains actual audio tracks — drop music videos; audio
+        # playlist items carry no track numbers (those come from the album track list)
+        return [
+            t.model_copy(update={"trackNumber": None})
+            for t in (album.tracks or [])
+            if t.videoType in ("MUSIC_VIDEO_TYPE_ATV", "MUSIC_VIDEO_TYPE_OFFICIAL_SOURCE_MUSIC")
+        ]
 
     def get_song(self, song_id: str):
         return SongCredits(

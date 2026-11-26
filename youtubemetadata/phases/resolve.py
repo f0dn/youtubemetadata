@@ -87,13 +87,17 @@ def phase_resolve(
             print(f"  [{i}/{len(album_ids)}] ✗ {aid}  {e}")
 
     # index the fetched albums by videoId so we can save from the album
-    # exactly the songs that are also part of the playlist
+    # exactly the songs that are also part of the playlist; tracks come from the
+    # album's audio-only playlist, which only contains actual audio tracks
     album_tracks: dict[str, Track] = {}
     track_albums: dict[str, str] = {}
+    album_track_lists: dict[str, list[Track]] = {}
     for aid, album in sorted(albums.items()):
         if album is None:
             continue
-        for at in album.tracks:
+        ats = svc.get_album_audio_tracks(album)
+        album_track_lists[aid] = ats
+        for at in ats:
             if at.videoId:
                 album_tracks[at.videoId] = at
                 track_albums[at.videoId] = aid
@@ -101,29 +105,25 @@ def phase_resolve(
     # ytmusicapi returns 1-based track numbers for most albums, but a few (e.g. Elephunk)
     # are 0-based — remember the base per album so we can normalize to 1-based
     album_zero_based: set[str] = set()
-    for aid, album in sorted(albums.items()):
-        if album is None:
-            continue
-        numbers = [at.trackNumber for at in album.tracks if at.trackNumber is not None]
+    for aid, ats in sorted(album_track_lists.items()):
+        numbers = [at.trackNumber for at in ats if at.trackNumber is not None]
         if numbers and min(numbers) == 0:
             album_zero_based.add(aid)
 
-    # the playlist's own tracks come first (with their music-video → audio swaps); every
-    # song of a resolved album that the playlist does not feature is appended afterwards, so
-    # each album resolves to all of its songs
-    sources: list[Track] = list(tracks)
+    # go straight to the albums: every song of a resolved album becomes a resolution entry
+    # (playlist tracks are album tracks anyway), so each album resolves to all of its songs;
+    # playlist leftovers without a usable album (singles, failed album fetches) come last
+    sources: list[Track] = []
     seen: set[str] = set()
-    for t in tracks:
-        if t.videoId:
-            seen.add(t.videoId)
     for aid in sorted(albums):
-        album = albums.get(aid)
-        if album is None:
-            continue
-        for at in album.tracks or []:
+        for at in album_track_lists.get(aid) or []:
             if at.videoId and at.videoId not in seen:
                 sources.append(at)
                 seen.add(at.videoId)
+    for t in tracks:
+        if t.videoId and t.videoId not in seen:
+            sources.append(t)
+            seen.add(t.videoId)
 
     entries: list[TrackEntry] = []
     processed: set[str] = set()
@@ -186,9 +186,11 @@ def phase_resolve(
             year = album.year
             track_tot = album.trackCount
             # the audio track (ATV) may not be an album track itself, so fall back to the
-            # music video (OMV) track for the shared metadata (e.g. track number)
+            # music video (OMV) track for the shared metadata (e.g. track number); track
+            # numbers come from the album's track list (audio playlist items carry none)
             track_base = 1 if aid in album_zero_based else 0
-            for at in album.tracks:
+            album_ats = album.tracks or []
+            for at in album_ats:
                 if at.videoId not in (audio_vid, vid):
                     continue
                 if at.trackNumber is not None:
@@ -198,7 +200,7 @@ def phase_resolve(
                 # fall back to matching the album track by normalized title when the
                 # videoId is not part of the album track list
                 target = _normalize_title(src.title)
-                for at in album.tracks:
+                for at in album_ats:
                     if at.trackNumber is not None and _normalize_title(at.title) == target:
                         track_no = at.trackNumber + track_base
                         break

@@ -8,7 +8,7 @@ kept in memory only and never persisted here.
 import json
 from pathlib import Path
 
-from youtubemetadata.paths import ALBUM_DIR, SONG_DIR
+from youtubemetadata.paths import ALBUM_DIR, AUDIOPLAYLIST_DIR, SONG_DIR
 
 
 def load_raw(path: Path) -> dict | None:
@@ -38,3 +38,13 @@ def load_song(song_id: str) -> dict | None:
 
 def save_song(song_id: str, song: dict) -> None:
     save_raw(SONG_DIR / f"{song_id}.json", song)
+
+
+def load_audio_playlist(playlist_id: str) -> dict | None:
+    """Load a cached raw audio-playlist response (``yt.get_playlist`` of an album's
+    ``audioPlaylistId``), if any."""
+    return load_raw(AUDIOPLAYLIST_DIR / f"{playlist_id}.json")
+
+
+def save_audio_playlist(playlist_id: str, data: dict) -> None:
+    save_raw(AUDIOPLAYLIST_DIR / f"{playlist_id}.json", data)

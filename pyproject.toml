@@ -9,7 +9,7 @@ dependencies = [
     "pillow>=13.0.0",
     "pydantic>=2.14.3",
     "ruff>=0.17.1",
-    "yt-dlp>=2026.10.26",
+    "yt-dlp[default]>=2026.10.26",
     "ytmusicapi>=1.12.3",
 ]
 

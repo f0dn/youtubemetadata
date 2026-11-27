@@ -17,7 +17,18 @@ def _resolution() -> PlaylistResolution:
 
 
 def test_download_uses_yt_dlp_python_api() -> None:
-    with patch("youtubemetadata.phases.download.yt_dlp.YoutubeDL") as mock_ydl:
+    ydl_opts = {
+        "format": "bestaudio[ext=m4a]/bestaudio",
+        "merge_output_format": "m4a",
+        "writethumbnail": True,
+        "outtmpl": "/raw/atv1/audio.m4a",
+        "noplaylist": True,
+    }
+    with (
+        patch("youtubemetadata.phases.download.yt_dlp.parse_options") as mock_parse,
+        patch("youtubemetadata.phases.download.yt_dlp.YoutubeDL") as mock_ydl,
+    ):
+        mock_parse.return_value = (MagicMock(), MagicMock(), [], ydl_opts)
         instance = MagicMock()
         instance.download.return_value = 0
         mock_ydl.return_value.__enter__.return_value = instance
@@ -25,6 +36,7 @@ def test_download_uses_yt_dlp_python_api() -> None:
         result = download_phase.phase_download(_resolution())
 
         assert result is not None
+        mock_parse.assert_called_once_with(None)
         assert mock_ydl.call_count == 1
         opts = mock_ydl.call_args.args[0]
         assert opts["format"] == "bestaudio[ext=m4a]/bestaudio"

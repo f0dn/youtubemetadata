@@ -38,13 +38,14 @@ def phase_download(resolution: PlaylistResolution) -> PlaylistResolution:
         track_dir.mkdir(parents=True, exist_ok=True)
         url = f"https://www.youtube.com/watch?v={vid}"
 
-        ydl_opts = {
-            "format": "bestaudio[ext=m4a]/bestaudio",
-            "merge_output_format": "m4a",
-            "writethumbnail": True,
-            "outtmpl": str(track_dir / "audio.m4a"),
-            "noplaylist": True,
-        }
+        # start from yt-dlp's parsed options (which auto-load the user's own config) and
+        # apply our download essentials on top
+        _parser, _opts, _urls, ydl_opts = yt_dlp.parse_options(None)
+        ydl_opts["format"] = "bestaudio[ext=m4a]/bestaudio"
+        ydl_opts["merge_output_format"] = "m4a"
+        ydl_opts["writethumbnail"] = True
+        ydl_opts["outtmpl"] = str(track_dir / "audio.m4a")
+        ydl_opts["noplaylist"] = True
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])

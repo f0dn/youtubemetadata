@@ -166,7 +166,8 @@ def phase_library(resolution: PlaylistResolution, library_path: str | Path) -> P
 
     written = 0
     skipped = 0
-    for entry in resolution.tracks:
+    n = len(resolution.tracks)
+    for i, entry in enumerate(resolution.tracks, 1):
         if not entry.isAvailable:
             skipped += 1
             continue
@@ -197,6 +198,7 @@ def phase_library(resolution: PlaylistResolution, library_path: str | Path) -> P
         if wrote:
             _embed_cover(dest, cover_file)
         written += 1
+        print(f"  [{i}/{n}] ✓ {entry.title}  ({entry.videoId})")
 
     print(f"Navidrome library written → {lib}  ({written} track(s), {skipped} skipped)")
     return lib

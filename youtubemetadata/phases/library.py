@@ -125,7 +125,7 @@ def _write_tags(path: Path, values: dict[str, Any]) -> bool:
 
 
 def _embed_cover(path: Path, cover: Path | None) -> bool:
-    """Embed album art (WEBP) into an MP4 / m4a file. Returns True on success."""
+    """Embed album art (square) into an MP4 / m4a file. Returns True on success."""
     if not cover or not cover.is_file():
         return False
     try:
@@ -135,6 +135,12 @@ def _embed_cover(path: Path, cover: Path | None) -> bool:
         if tag.tags is None:
             tag.add_tags()
         with Image.open(cover) as img:
+            # album covers are square — take the middle of the (youtube video) thumbnail
+            w, h = img.size
+            side = min(w, h)
+            left = (w - side) // 2
+            top = (h - side) // 2
+            img = img.crop((left, top, left + side, top + side))
             buffer = io.BytesIO()
             img.save(buffer, format="PNG")
             data = buffer.getvalue()
